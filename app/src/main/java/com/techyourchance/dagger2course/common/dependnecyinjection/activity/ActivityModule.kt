@@ -9,19 +9,19 @@ import dagger.Module
 import dagger.Provides
 
 @Module    //argument `activity` is called bootstrapping dependency, which you can only get when running application
-class ActivityModule(val activity: AppCompatActivity) {
+object ActivityModule {
 
-    @Provides
-    fun activity() = activity
+//    @Provides
+//    fun activity() = activity
 
     @Provides
     @ActivityScope
     fun screensNavigator(activity: AppCompatActivity) = ScreensNavigator(activity)
 
     @Provides
-    fun layoutInflater() = LayoutInflater.from(activity)
+    fun layoutInflater(activity: AppCompatActivity) = LayoutInflater.from(activity)
 
     @Provides
-    fun fragmentManager() = activity.supportFragmentManager
+    fun fragmentManager(activity: AppCompatActivity) = activity.supportFragmentManager
 
 }

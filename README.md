@@ -58,3 +58,160 @@ open class BaseDialog: DialogFragment() {
 ⇒ Dialog are controllers. It can be a very complex object.
 
 ⇒ Recommended to be used with `DialogFragment()`
+
+# v.0.0.2 - optimization
+
+### Make static..
+
+```kotlin
+@Module    //argument `activity` is called bootstrapping dependency, which you can only get when running application
+class ActivityModule(
+        val activity: AppCompatActivity
+) {
+
+    @Provides
+    fun activity() = activity
+
+    companion object {
+
+        @Provides
+        @ActivityScope
+        fun screensNavigator(activity: AppCompatActivity) = ScreensNavigator(activity)
+
+        @Provides
+        fun layoutInflater(activity: AppCompatActivity) = LayoutInflater.from(activity)
+
+        @Provides
+        fun fragmentManager(activity: AppCompatActivity) = activity.supportFragmentManager
+
+    }
+
+}
+```
+
+### More advanced concept - how to handle bootstrapped argument?
+
+- Bootstrapped argument means, some dependencies must be injected outside of the module
+
+- ActivityModule.kt
+
+```kotlin
+@Module    //argument `activity` is called bootstrapping dependency, which you can only get when running application
+class ActivityModule(
+        val activity: AppCompatActivity
+) {
+
+    @Provides
+    fun activity() = activity
+
+    companion object {
+
+        @Provides
+        @ActivityScope
+        fun screensNavigator(activity: AppCompatActivity) = ScreensNavigator(activity)
+
+        @Provides
+        fun layoutInflater(activity: AppCompatActivity) = LayoutInflater.from(activity)
+
+        @Provides
+        fun fragmentManager(activity: AppCompatActivity) = activity.supportFragmentManager
+
+    }
+
+}
+```
+
+⇒ ActivityModule has bootstrapped value
+
+⇒ What can we do to remove this?
+
+- ActivityComponent.kt
+
+```kotlin
+@ActivityScope
+@Subcomponent(modules = [ActivityModule::class])
+interface ActivityComponent {
+    fun newPresentationComponent(): PresentationComponent
+    @Subcomponent.Builder
+    interface Builder {
+        @BindsInstance fun activity(activity: AppCompatActivity): Builder
+        fun activityModule(activityModule: ActivityModule): Builder
+        fun build(): ActivityComponent
+    }
+}
+```
+
+⇒ Define Builder with `@Subcomponent` and `@BindsInstance`
+
+- Refactor ActivityModule.kt to `object`
+
+```kotlin
+@Module    //argument `activity` is called bootstrapping dependency, which you can only get when running application
+class ActivityModule(
+        val activity: AppCompatActivity
+) {
+
+    @Provides
+    fun activity() = activity
+
+    companion object {
+
+        @Provides
+        @ActivityScope
+        fun screensNavigator(activity: AppCompatActivity) = ScreensNavigator(activity)
+
+        @Provides
+        fun layoutInflater(activity: AppCompatActivity) = LayoutInflater.from(activity)
+
+        @Provides
+        fun fragmentManager(activity: AppCompatActivity) = activity.supportFragmentManager
+
+    }
+
+}
+```
+
+```kotlin
+@Module    //argument `activity` is called bootstrapping dependency, which you can only get when running application
+object ActivityModule {
+
+//    @Provides
+//    fun activity() = activity
+
+    @Provides
+    @ActivityScope
+    fun screensNavigator(activity: AppCompatActivity) = ScreensNavigator(activity)
+
+    @Provides
+    fun layoutInflater(activity: AppCompatActivity) = LayoutInflater.from(activity)
+
+    @Provides
+    fun fragmentManager(activity: AppCompatActivity) = activity.supportFragmentManager
+
+}
+```
+
+- BaseActivity.kt
+
+```kotlin
+open class BaseActivity : AppCompatActivity() {
+
+    private val appComponent get() = (application as MyApplication).appComponent
+
+    val activityComponent by lazy {
+        appComponent.newActivityComponentBuilder()
+                .activity(this) //Inject activity here
+                .activityModule(ActivityModule)
+                .build()
+    }
+
+    private val presentationComponent: PresentationComponent by lazy {
+        activityComponent.newPresentationComponent()
+    }
+
+    protected val injector get() = presentationComponent
+
+}
+```
+
+⇒ Instead of passing activity in `ActivityModule`, you can pass activity directly.

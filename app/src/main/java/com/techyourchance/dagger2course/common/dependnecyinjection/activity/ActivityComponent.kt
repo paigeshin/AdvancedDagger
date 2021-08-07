@@ -1,12 +1,21 @@
 package com.techyourchance.dagger2course.common.dependnecyinjection.activity
 
+import androidx.appcompat.app.AppCompatActivity
 import com.techyourchance.dagger2course.common.dependnecyinjection.presentation.PresentationComponent
+import com.techyourchance.dagger2course.common.dependnecyinjection.service.ServiceComponent
+import com.techyourchance.dagger2course.common.dependnecyinjection.service.ServiceModule
+import dagger.BindsInstance
 import dagger.Subcomponent
 
 @ActivityScope
 @Subcomponent(modules = [ActivityModule::class])
 interface ActivityComponent {
-    //You don't need to pass `presentationModule` when it doesn't have any bootstrapping dependency
     fun newPresentationComponent(): PresentationComponent
+    @Subcomponent.Builder
+    interface Builder {
+        @BindsInstance fun activity(activity: AppCompatActivity): Builder
+        fun activityModule(activityModule: ActivityModule): Builder
+        fun build(): ActivityComponent
+    }
 }
 
