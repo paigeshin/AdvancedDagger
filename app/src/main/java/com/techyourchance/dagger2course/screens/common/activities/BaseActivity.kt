@@ -12,7 +12,6 @@ open class BaseActivity : AppCompatActivity() {
     val activityComponent by lazy {
         appComponent.newActivityComponentBuilder()
                 .activity(this)
-                .activityModule(ActivityModule)
                 .build()
     }
 
