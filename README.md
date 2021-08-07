@@ -670,3 +670,65 @@ class AppModule(val application: Application) {
 
 - Qualifiers are annotation classes annotated with @Qualifier
 - From Dagger's standpoint, qualifiers are part of the type (e.g. @Q1 Service and @Q2 Service are different types)
+
+# v.0.0.5 - Providers
+
+```kotlin
+@PresentationScope
+@Subcomponent()
+interface PresentationComponent {
+    fun imageLoader(): ImageLoader
+    fun inject(fragment: QuestionsListFragment)
+    fun inject(activity: QuestionDetailsActivity)
+    fun inject(questionsListActivity: QuestionsListActivity)
+}
+```
+
+```kotlin
+@ActivityScope
+class ImageLoader @Inject constructor(private val activity: AppCompatActivity) {
+
+    private val requestOptions = RequestOptions().centerCrop()
+
+    fun loadImage(imageUrl: String, target: ImageView) {
+        Glide.with(activity).load(imageUrl).apply(requestOptions).into(target)
+    }
+
+}
+```
+
+```kotlin
+class ViewMvcFactory @Inject constructor(private val layoutInflater: LayoutInflater, private val imageLoaderProvider: Provider<ImageLoader>) {
+
+    fun newQuestionsListViewMvc(parent: ViewGroup?): QuestionsListViewMvc {
+        return QuestionsListViewMvc(layoutInflater, parent)
+    }
+
+    fun newQuestionDetailsViewMvc(parent: ViewGroup?): QuestionDetailsViewMvc {
+        return QuestionDetailsViewMvc(layoutInflater, imageLoaderProvider.get(), parent)
+    }
+}
+```
+
+⇒ By giving `Provider<ImageLoader>` , ImageLoader keeps all the characteristics of Dagger Injection
+
+```kotlin
+class ViewMvcFactory @Inject constructor(private val layoutInflaterProvider: Provider<LayoutInflater>, private val imageLoaderProvider: Provider<ImageLoader>) {
+
+    fun newQuestionsListViewMvc(parent: ViewGroup?): QuestionsListViewMvc {
+        return QuestionsListViewMvc(layoutInflaterProvider.get(), parent)
+    }
+
+    fun newQuestionDetailsViewMvc(parent: ViewGroup?): QuestionDetailsViewMvc {
+        return QuestionDetailsViewMvc(layoutInflaterProvider.get(), imageLoaderProvider.get(), parent)
+    }
+}
+```
+
+⇒ You can apply it to any properties which are provided by dagger
+
+### Dagger Conventions (11):
+
+- Provider<Type> wrappers are "windows" into Dagger's object graph and allow you to retrieve a single type of services
+- Providers are basically "extensions" of composition roots
+- You use Providers when you need to perform "late injection" (allowing same instance)
