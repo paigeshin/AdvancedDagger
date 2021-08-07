@@ -215,3 +215,9 @@ open class BaseActivity : AppCompatActivity() {
 ```
 
 ⇒ Instead of passing activity in `ActivityModule`, you can pass activity directly.
+
+### Dagger Conventions (8):
+
+- Dagger generates more performant code for static providers in Modules (use companion object or top-level object in Kotlin)
+- @Component.Builder(or @Subcomponent.Builder) designates builder interface for Component
+- @BindsInstance allows for injection of "bootstrapping dependencies" directly into Component Builders
