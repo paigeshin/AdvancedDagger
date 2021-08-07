@@ -387,6 +387,7 @@ interface ActivityComponent {
 val activityComponent by lazy {
         appComponent.newActivityComponentBuilder()
                 .activity(this)
+							//.activityModule(ActivityModule())
                 .build()
     }
 ```
@@ -396,3 +397,276 @@ val activityComponent by lazy {
 - @Binds allows to map specific provided type to another provided type (e.g. provide implementation of an interface)
 - Custom bindings using @Binds must be defined as abstract functions in abstract modules
 - Abstract @Binds functions can't coexist with non-static provider methods in the same module
+
+# v.0.0.4, Qualifiers
+
+### Situation # 1, You need multiple retrofit instances
+
+```kotlin
+package com.techyourchance.dagger2course.common.dependnecyinjection
+
+import javax.inject.Qualifier
+
+@Qualifier
+annotation class Retrofit1 {
+}
+```
+
+```kotlin
+@Module
+class AppModule(val application: Application) {
+
+    @Provides
+    @AppScope
+    @Retrofit1
+    fun retrofit1(): Retrofit {
+        return Retrofit.Builder()
+                .baseUrl(Constants.BASE_URL)
+                .addConverterFactory(GsonConverterFactory.create())
+                .build()
+    }
+
+    @Provides
+    @AppScope
+    fun retrofit2(): Retrofit {
+        return Retrofit.Builder()
+                .baseUrl(Constants.BASE_URL)
+                .addConverterFactory(GsonConverterFactory.create())
+                .build()
+    }
+
+    @Provides
+    fun application() = application
+
+    @Provides
+    @AppScope
+    fun stackoverflowApi(retrofit: Retrofit) = retrofit.create(StackoverflowApi::class.java)
+
+}
+```
+
+### Situation #2, just provide specific retrofit
+
+```kotlin
+@Qualifier
+annotation class Retrofit1 {
+}
+```
+
+```kotlin
+@Module
+class AppModule(val application: Application) {
+
+    @Provides
+    @AppScope
+    @Retrofit1
+    fun retrofit1(): Retrofit {
+        return Retrofit.Builder()
+                .baseUrl(Constants.BASE_URL)
+                .addConverterFactory(GsonConverterFactory.create())
+                .build()
+    }
+
+    @Provides
+    fun application() = application
+
+    @Provides
+    @AppScope
+    fun stackoverflowApi(@Retrofit1 retrofit: Retrofit) = retrofit.create(StackoverflowApi::class.java)
+
+}
+```
+
+### Give specific retrofit instance
+
+```kotlin
+@Qualifier
+annotation class Retrofit1 {
+}
+@Qualifier
+annotation class Retrofit2 {
+}
+```
+
+```kotlin
+@Module
+class AppModule(val application: Application) {
+
+    @Provides
+    @AppScope
+    @Retrofit1
+    fun retrofit1(): Retrofit {
+        return Retrofit.Builder()
+                .baseUrl(Constants.BASE_URL)
+                .addConverterFactory(GsonConverterFactory.create())
+                .build()
+    }
+
+    @Provides
+    @AppScope
+    @Retrofit2
+    fun retrofit2(): Retrofit {
+        return Retrofit.Builder()
+                .baseUrl("https://blabla.com")
+                .addConverterFactory(GsonConverterFactory.create())
+                .build()
+    }
+
+    @Provides
+    fun application() = application
+
+    @Provides
+    @AppScope
+    fun stackoverflowApi(@Retrofit2 retrofit: Retrofit) = retrofit.create(StackoverflowApi::class.java)
+
+}
+```
+
+### using `Named()`
+
+```kotlin
+@Module
+class AppModule(val application: Application) {
+
+    @Provides
+    @AppScope
+    @Named("Retrofit1")
+    fun retrofit1(): Retrofit {
+        return Retrofit.Builder()
+                .baseUrl(Constants.BASE_URL)
+                .addConverterFactory(GsonConverterFactory.create())
+                .build()
+    }
+
+    @Provides
+    @AppScope
+    @Named("Retrofit2")
+    fun retrofit2(): Retrofit {
+        return Retrofit.Builder()
+                .baseUrl("https://blabla.com")
+                .addConverterFactory(GsonConverterFactory.create())
+                .build()
+    }
+
+    @Provides
+    fun application() = application
+
+    @Provides
+    @AppScope
+    fun stackoverflowApi(@Named("retrofit2") retrofit: Retrofit) = retrofit.create(StackoverflowApi::class.java)
+
+}
+```
+
+### Named() extremely used
+
+```kotlin
+@Module
+class AppModule(val application: Application) {
+
+    @Provides
+    @AppScope
+    @Named("Retrofit1")
+    fun retrofit1(@Named("base_url") baseUrl: String): Retrofit {
+        return Retrofit.Builder()
+                .baseUrl(baseUrl)
+                .addConverterFactory(GsonConverterFactory.create())
+                .build()
+    }
+
+    @Provides
+    @AppScope
+    @Named("Retrofit2")
+    fun retrofit2(@Named("other_base_url") baseUrl: String): Retrofit {
+        return Retrofit.Builder()
+                .baseUrl(baseUrl)
+                .addConverterFactory(GsonConverterFactory.create())
+                .build()
+    }
+
+    @Provides
+    @Named("base_url")
+    fun baseUrl() = Constants.BASE_URL
+
+    @Provides
+    @Named("other_base_url")
+    fun otherBaseUrl() = "https://blabla.com/"
+
+    @Provides
+    fun application() = application
+
+    @Provides
+    @AppScope
+    fun stackoverflowApi(@Named("Retrofit2") retrofit: Retrofit) = retrofit.create(StackoverflowApi::class.java)
+
+}
+```
+
+⇒ Bad examples
+
+⇒ Dependency Injection only uses `behavior` but `baseUrl` and `otherBaseUrl` are not behavior but `data structure`
+
+### Correct way to avoid dependency injection with data structures
+
+- Create behavior
+
+```kotlin
+
+class UrlProvider {
+    fun getBaseUrl1(): String = Constants.BASE_URL
+    fun getBaseUrl2(): String = "https://www.helloworld.com"
+}
+```
+
+- Refactor AppModule
+
+```kotlin
+@Module
+class AppModule(val application: Application) {
+
+    @Provides
+    @AppScope
+    @Named("Retrofit1")
+    fun retrofit1(urlProvider: UrlProvider): Retrofit {
+        return Retrofit.Builder()
+                .baseUrl(urlProvider.getBaseUrl1())
+                .addConverterFactory(GsonConverterFactory.create())
+                .build()
+    }
+
+    @Provides
+    @AppScope
+    @Named("Retrofit2")
+    fun retrofit2(urlProvider: UrlProvider): Retrofit {
+        return Retrofit.Builder()
+                .baseUrl(urlProvider.getBaseUrl2())
+                .addConverterFactory(GsonConverterFactory.create())
+                .build()
+    }
+
+//    @Provides
+//    @Named("base_url")
+//    fun baseUrl() = Constants.BASE_URL
+
+//    @Provides
+//    @Named("other_base_url")
+//    fun otherBaseUrl() = "https://blabla.com/"
+
+    @AppScope
+    @Provides
+    fun urlProvider() = UrlProvider()
+
+    @Provides
+    fun application() = application
+
+    @Provides
+    @AppScope
+    fun stackoverflowApi(@Named("Retrofit2") retrofit: Retrofit) = retrofit.create(StackoverflowApi::class.java)
+
+}
+```
+
+### Dagger Conventions (10)
+
+- Qualifiers are annotation classes annotated with @Qualifier
+- From Dagger's standpoint, qualifiers are part of the type (e.g. @Q1 Service and @Q2 Service are different types)
