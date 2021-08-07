@@ -61,6 +61,10 @@ open class BaseDialog: DialogFragment() {
 
 # v.0.0.2 - optimization
 
+⇒ Actually, the optimization is not so obvious.
+
+⇒ Not recommended to implement this concept
+
 ### Make static..
 
 ```kotlin
